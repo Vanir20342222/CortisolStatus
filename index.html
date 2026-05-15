@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cortisol Level Tracker - Pro</title>
+    <style>
+        /* CSS Variablen für Light und Dark Mode */
+        :root {
+            --bg-body: #e2e8f0;
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --bg-value: #f1f5f9;
+            --needle-color: #0f172a;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Dark Mode Farben */
+        body.dark-mode {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --bg-value: #334155;
+            --needle-color: #f8fafc;
+            --shadow: rgba(0, 0, 0, 0.5);
+        }
+
+        /* Reset und Fullscreen-Verhalten */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-body); 
+            color: var(--text-main);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        /* Kontroll-Buttons (Darkmode / Fullscreen) */
+        .top-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+
+        .control-btn {
+            background: var(--bg-card);
+            color: var(--text-main);
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px var(--shadow);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.2s, background-color 0.4s;
+        }
+
+        .control-btn:hover {
+            transform: scale(1.1);
+        }
+
+        /* Die Dashboard Karte */
+        .card {
+            background: var(--bg-card);
+            width: 90vw;
+            height: 90vh;
+            max-width: 800px;
+            max-height: 600px;
+            border-radius: 24px;
+            padding: 5vmin;
+            box-sizing: border-box;
+            box-shadow: 0 15px 40px var(--shadow);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; 
+            align-items: center;
+            transition: background-color 0.4s ease, box-shadow 0.4s ease;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(24px, 5vmin, 42px);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-weight: 800;
+            text-align: center;
+            color: var(--text-main);
+        }
+
+        /* BOMBENSICHERE SVG-GRAFIK */
+        .gauge-wrapper {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .gauge-svg {
+            width: 100%;
+            height: auto;
+            overflow: visible;
+            color: var(--text-main);
+        }
+
+        .gauge-svg text {
+            fill: currentColor;
+            transition: fill 0.4s ease;
+        }
+
+        /* Nadel Animationen in der SVG */
+        .needle-group {
+            transform-origin: 50px 55px; /* Exakter Drehpunkt in der Mitte der SVG */
+            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .needle-poly, .needle-dot {
+            fill: var(--needle-color);
+            transition: fill 0.4s ease;
+        }
+
+        .needle-center {
+            fill: var(--bg-card);
+            stroke: var(--needle-color);
+            stroke-width: 1.5;
+            transition: fill 0.4s ease, stroke 0.4s ease;
+        }
+
+        /* Slider und Textanzeige */
+        .controls {
+            width: 90%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        input[type=range] {
+            width: 100%;
+            height: 12px;
+            background: var(--bg-value);
+            border-radius: 10px;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+            margin-bottom: 25px;
+            transition: background-color 0.4s;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 35px;
+            height: 35px;
+            background: var(--needle-color);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: 0.2s transform, background-color 0.4s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .value-display {
+            font-size: clamp(16px, 3vmin, 20px);
+            color: var(--text-muted);
+            background: var(--bg-value);
+            padding: 12px 30px;
+            border-radius: 50px;
+            display: inline-block;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        .value-display span {
+            font-size: clamp(22px, 4vmin, 32px);
+            font-weight: bold;
+            color: var(--text-main);
+            transition: color 0.4s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-controls">
+        <button class="control-btn" id="themeToggle" title="Dark Mode">🌙</button>
+        <button class="control-btn" id="fullscreenToggle" title="Vollbild">⛶</button>
+    </div>
+
+    <div class="card">
+        <h1>Cortisol</h1>
+
+        <div class="gauge-wrapper">
+            <!-- 100% REINE, FEHLERFREIE SVG VEKTORGRAFIK -->
+            <svg class="gauge-svg" viewBox="0 0 100 65" xmlns="http://www.w3.org/2000/svg">
+                
+                <!-- Text Pfad -->
+                <path id="text-curve" d="M 5 55 A 45 45 0 0 1 95 55" fill="none" stroke="none" />
+                <text font-size="4" font-weight="bold" letter-spacing="0.2">
+                    <textPath href="#text-curve" startOffset="3%" text-anchor="start">LOW</textPath>
+                    <textPath href="#text-curve" startOffset="50%" text-anchor="middle">MEDIUM</textPath>
+                    <textPath href="#text-curve" startOffset="97%" text-anchor="end">HIGH</textPath>
+                </text>
+
+                <!-- Die farbigen Diagramm-Bögen -->
+                <g transform="rotate(180 50 55)" fill="none" stroke-width="14">
+                    <circle cx="50" cy="55" r="32" stroke="#64b851" stroke-dasharray="18.906 200" stroke-dashoffset="0" />
+                    <circle cx="50" cy="55" r="32" stroke="#94c640" stroke-dasharray="18.906 200" stroke-dashoffset="-20.406" />
+                    <circle cx="50" cy="55" r="32" stroke="#f7c225" stroke-dasharray="18.906 200" stroke-dashoffset="-40.812" />
+                    <circle cx="50" cy="55" r="32" stroke="#f06927" stroke-dasharray="18.906 200" stroke-dashoffset="-61.218" />
+                    <circle cx="50" cy="55" r="32" stroke="#e82329" stroke-dasharray="18.906 200" stroke-dashoffset="-81.624" />
+                </g>
+
+                <!-- Die bewegliche Nadel -->
+                <g id="needle" class="needle-group">
+                    <polygon points="48.5,55 51.5,55 50,22" class="needle-poly" />
+                    <circle cx="50" cy="55" r="4.5" class="needle-center" />
+                    <circle cx="50" cy="55" r="1.5" class="needle-dot" />
+                </g>
+
+            </svg>
+        </div>
+
+        <div class="controls">
+            <input type="range" id="levelSlider" min="0" max="100" value="15">
+            <div class="value-display">Level: <span id="levelValue">15</span>%</div>
+        </div>
+    </div>
+
+    <script>
+        // --- Diagramm Logik ---
+        const slider = document.getElementById('levelSlider');
+        const needle = document.getElementById('needle');
+        const valueDisplay = document.getElementById('levelValue');
+
+        function updateGauge(value) {
+            valueDisplay.textContent = value;
+            // 0% ist -90 Grad (Links), 100% ist +90 Grad (Rechts)
+            const degrees = (value / 100) * 180 - 90;
+            needle.style.transform = `rotate(${degrees}deg)`;
+        }
+
+        slider.addEventListener('input', function(e) {
+            updateGauge(e.target.value);
+        });
+        updateGauge(slider.value); // Beim Start aufrufen
+
+        // --- Dark Mode Logik ---
+        const themeToggleBtn = document.getElementById('themeToggle');
+        themeToggleBtn.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            if (document.body.classList.contains('dark-mode')) {
+                themeToggleBtn.textContent = '☀️';
+            } else {
+                themeToggleBtn.textContent = '🌙';
+            }
+        });
+
+        // --- Fullscreen Logik ---
+        const fullscreenToggleBtn = document.getElementById('fullscreenToggle');
+        fullscreenToggleBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Fehler beim Vollbildmodus: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            if (document.fullscreenElement) {
+                fullscreenToggleBtn.innerHTML = '✖';
+            } else {
+                fullscreenToggleBtn.innerHTML = '⛶';
+            }
+        });
+    </script>
+
+</body>
+</html>
